@@ -63,7 +63,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
-          git add -A -- . ':!fix-report.md' ':!droid.log'
+          git add -A -- . ':!fix-report.md'
           git commit -m "fix(deps): resolve security advisories for $PKG"
           git push -u origin "$branch"
           gh pr create --title "fix(deps): resolve security advisories for $PKG" \
