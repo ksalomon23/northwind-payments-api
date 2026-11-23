@@ -30,17 +30,23 @@ not "actively exploited" or "on the KEV list."
   the affected config surface, so no code change is required - good contrast
   against Finding 3, which does need one.
 
-## Finding 3 - jsonwebtoken (breaking change, needs a code edit)
+## Finding 3 - jsonwebtoken (major bump, no code change needed for this repo)
 - **Package:** `jsonwebtoken` (direct dependency, used in `src/auth.ts`)
-- **Installed:** 8.5.1 -> **Fixed in:** 9.0.2
-- **Advisory:** GHSA-qwph-4952-7xr6 - signature validation bypass due to
-  insecure default algorithm handling in `jwt.verify()` (algorithm confusion).
-- **Fix type:** **breaking.** v9 requires an explicit `algorithms` allowlist
-  on every `jwt.verify()` call; without it, verify throws. This repo's
-  `src/auth.ts` currently calls `jwt.verify(token, JWT_SECRET)` with no
-  algorithms option - the fix PR must add `{ algorithms: ["HS256"] }` (and
-  the matching change in `src/__tests__/payments.test.ts` if signing options
-  change), which is the "small breaking change" the build brief asks for.
+- **Installed:** 8.5.1 -> **Fixed in:** 9.0.0 (smallest fixing version; now pinned)
+- **Advisories (from `npm audit`, GitHub Advisory Database):**
+  - GHSA-8cf7-32gw-wr33 - unrestricted key type could lead to legacy keys
+    usage (high). Affected: `<=8.5.1`. Fixed: 9.0.0.
+  - GHSA-hjrf-2m68-5959 - insecure key retrieval function could lead to
+    forgeable public/private tokens from RSA to HMAC (moderate).
+    Affected: `<=8.5.1`. Fixed: 9.0.0.
+  - GHSA-qwph-4952-7xr6 - signature validation bypass due to insecure default
+    algorithm in `jwt.verify()` (moderate). Affected: `<9.0.0`. Fixed: 9.0.0.
+- **Fix type:** semver-major bump. v9 does not require an `algorithms` option:
+  when it is omitted and the key is a string secret, verify defaults to
+  HS256/HS384/HS512 and rejects `alg: none`. This repo signs and verifies
+  HS256 tokens with a string secret, so `src/auth.ts` and the tests work
+  unchanged (lint, build and all 11 tests pass on 9.0.0). Adding
+  `{ algorithms: ["HS256"] }` to `jwt.verify()` remains optional hardening.
 
 ## Finding 4 - express + path-to-regexp (direct + transitive, minor bump)
 - **Package:** `express` (direct) pulling an old `path-to-regexp` (transitive)
