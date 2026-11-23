@@ -32,15 +32,22 @@ not "actively exploited" or "on the KEV list."
 
 ## Finding 3 - jsonwebtoken (breaking change, needs a code edit)
 - **Package:** `jsonwebtoken` (direct dependency, used in `src/auth.ts`)
-- **Installed:** 8.5.1 -> **Fixed in:** 9.0.2
-- **Advisory:** GHSA-qwph-4952-7xr6 - signature validation bypass due to
-  insecure default algorithm handling in `jwt.verify()` (algorithm confusion).
-- **Fix type:** **breaking.** v9 requires an explicit `algorithms` allowlist
-  on every `jwt.verify()` call; without it, verify throws. This repo's
-  `src/auth.ts` currently calls `jwt.verify(token, JWT_SECRET)` with no
-  algorithms option - the fix PR must add `{ algorithms: ["HS256"] }` (and
-  the matching change in `src/__tests__/payments.test.ts` if signing options
-  change), which is the "small breaking change" the build brief asks for.
+- **Installed:** 8.5.1 -> **Fixed in:** 9.0.0 (applied: `9.0.0`, the smallest
+  version that clears all three advisories below)
+- **Advisories:**
+  - GHSA-8cf7-32gw-wr33 - unrestricted key type could lead to legacy keys
+    usage (high). Affected: `<=8.5.1`. Fixed: 9.0.0.
+  - GHSA-hjrf-2m68-5959 - insecure key retrieval function could lead to
+    forgeable tokens from RSA to HMAC (moderate). Affected: `<=8.5.1`. Fixed: 9.0.0.
+  - GHSA-qwph-4952-7xr6 - signature validation bypass due to insecure default
+    algorithm in `jwt.verify()` (moderate). Affected: `<9.0.0`. Fixed: 9.0.0.
+- **Fix type:** major bump (8.x -> 9.x). v9's breaking changes (default
+  `algorithms` derived from key type, unsigned `none` tokens rejected, RSA
+  keys must be >= 2048 bits, stricter key types) do not break this repo's
+  HS256 + string-secret usage: lint, build and tests pass on 9.0.0 with no code
+  change. As hardening, `src/auth.ts` now passes `{ algorithms: ["HS256"] }`
+  to `jwt.verify()`, and `src/__tests__/payments.test.ts` gains a test that
+  an HS512-signed token is rejected.
 
 ## Finding 4 - express + path-to-regexp (direct + transitive, minor bump)
 - **Package:** `express` (direct) pulling an old `path-to-regexp` (transitive)

@@ -14,10 +14,9 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    // NOTE: jsonwebtoken <9 lets a caller omit `algorithms`, which is the
-    // root cause behind GHSA-qwph-4952-7xr6 (algorithm confusion in verify()).
-    // The fix bump to ^9.0.2 requires passing an explicit algorithms allowlist.
-    jwt.verify(token, JWT_SECRET);
+    // Pin the accepted algorithm so a token's own `alg` header cannot pick
+    // the verification method (GHSA-qwph-4952-7xr6, algorithm confusion).
+    jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
   } catch {
     return res.status(401).json({ error: "invalid token" });
   }
