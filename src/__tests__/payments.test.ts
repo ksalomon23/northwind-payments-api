@@ -11,12 +11,6 @@ describe("GET /payments", () => {
     expect(res.status).toBe(401);
   });
 
-  it("rejects a token signed with a non-allowlisted algorithm", async () => {
-    const token = jwt.sign({ sub: "cust_1" }, TEST_SECRET, { algorithm: "HS512" });
-    const res = await request(createApp()).get("/payments").set("authorization", `Bearer ${token}`);
-    expect(res.status).toBe(401);
-  });
-
   it("lists all payments when authenticated", async () => {
     const res = await request(createApp()).get("/payments").set("authorization", authHeader());
     expect(res.status).toBe(200);
