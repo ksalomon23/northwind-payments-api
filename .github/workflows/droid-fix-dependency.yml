@@ -1,0 +1,70 @@
+name: Droid fix vulnerable dependency
+
+# Manual trigger: pick one vulnerable package and Droid opens a PR that fixes it.
+# Merging is still gated by the branch ruleset (required review + CI).
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Vulnerable npm package to fix (e.g. jsonwebtoken)"
+        required: true
+        default: jsonwebtoken
+
+permissions:
+  contents: read
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # PR_TOKEN is used (not GITHUB_TOKEN) so CI runs on the PR Droid opens.
+          token: ${{ secrets.PR_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Droid CLI
+        run: |
+          curl -fsSL https://app.factory.ai/cli | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - run: npm ci
+
+      - name: Droid plans and applies the fix
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          PKG: ${{ inputs.package }}
+        run: |
+          droid exec --auto medium "The npm package '$PKG' has open Dependabot
+          security advisories. Fix it with the smallest version bump that
+          resolves them, using npm install so package.json and
+          package-lock.json both update.
+          If the new version has breaking changes that affect this repo's code,
+          make the minimum code change required (read src/ to find call sites).
+          Then run npm run lint, npm run build and npm test; fix any failure
+          your change caused. Do not weaken or delete tests.
+          Do not run git commands. Do not touch other packages.
+          Write fix-report.md with these sections: Advisories fixed (GHSA IDs),
+          Plan (exact change), Breaking-change risk, Validation (commands and
+          results), Rollback." | tee droid.log
+
+      - name: Open pull request
+        env:
+          GH_TOKEN: ${{ secrets.PR_TOKEN }}
+          PKG: ${{ inputs.package }}
+        run: |
+          if git diff --quiet; then echo "::error::Droid made no changes"; exit 1; fi
+          branch="droid/fix-$PKG-$GITHUB_RUN_ID"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A -- . ':!fix-report.md' ':!droid.log'
+          git commit -m "fix(deps): resolve security advisories for $PKG"
+          git push -u origin "$branch"
+          gh pr create --title "fix(deps): resolve security advisories for $PKG" \
+            --body-file fix-report.md --base main
